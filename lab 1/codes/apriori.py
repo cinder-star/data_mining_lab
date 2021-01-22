@@ -1,4 +1,3 @@
-from math import ceil
 from datetime import datetime
 
 
@@ -179,7 +178,7 @@ def run_apriori(fle: str, support_per: float):
         length_tran = len(transaction)
         if length_tran > max_transaction_length:
             max_transaction_length = length_tran
-    min_sup = int(ceil((total_transactions * support_per) / 100.0))
+    min_sup = round((total_transactions * support_per) / 100.0)
 
     one_item_set, candidates = get_one_itemset(data, min_sup)
     freq_patterns = len(one_item_set)
