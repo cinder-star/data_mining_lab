@@ -167,7 +167,7 @@ def run_apriori(fle: str, support_per: float):
     data = []
     with open(fle, "r") as f:
         for line in f.readlines():
-            data.append(tuple(map(str, line.split())))
+            data.append(tuple(map(int, line.split())))
 
     print(f"Mining {fle}...")
     print("------------------------------------")
