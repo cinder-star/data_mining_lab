@@ -203,11 +203,11 @@ def run_apriori(fle: str, support_per: float):
 
 
 if __name__ == "__main__":
-    file_list = ["mushroom.dat", "kosarak.dat", "retail.dat", "T10I4D100K.dat"]
+    file_list = ["chess.dat"]
     for fle in file_list:
         stack = []
         then = datetime.now()
-        run_apriori(fle, 30.0)
+        run_apriori(fle, 60.0)
         now = datetime.now()
         print("Execution time:", (now - then).total_seconds(), "seconds")
         print()
