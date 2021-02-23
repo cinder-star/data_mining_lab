@@ -45,9 +45,7 @@ def classify_attributes(data: list):
     discrete_flag = [True for _ in range(attribute_count)]
     for i in range(attribute_count):
         value_set = set()
-        if isinstance(data[0][i], str):
-            continue
-        else:
+        if not isinstance(data[0][i], str):
             for j in range(row_count):
                 value_set.add(data[j][i])
             if len(value_set) > 10:
@@ -55,10 +53,15 @@ def classify_attributes(data: list):
     return discrete_flag
 
 
-def calculate_result(row: list, root: TreeNode):
+def calculate_result(row: list, root: TreeNode, discrete_flag: list):
     if root.decision:
         return root.decision
-    return calculate_result(row, root.children[row[root.attribute]])
+    if discrete_flag[root.attribute]:
+        return calculate_result(row, root.children[row[root.attribute]], discrete_flag)
+    elif row[root.attribute] > root.split_point:
+        return calculate_result(row, root.children["greater"], discrete_flag)
+    else:
+        return calculate_result(row, root.children["less"], discrete_flag)
 
 
 def validation_split(data: list, percentile: float):
@@ -133,8 +136,62 @@ def discrete_attribute_value_map(data: list, discrete_flag: list):
             att_set = set()
             for row in data:
                 att_set.add(row[i])
-        attribute_value_map[i] = list(att_set)
+            attribute_value_map[i] = list(att_set)
     return attribute_value_map
+
+
+def conditional_sort(db: list, subset_db: list, attribute: int):
+    subset_db.sort(key=lambda x: db[x][attribute])
+
+
+def continuous_best_split(db: list, subset_db: list, attribute: int, entropy_db: float):
+    attribute_value_set = set()
+    for row in subset_db:
+        attribute_value_set.add(str(db[row][attribute]))
+
+    if len(attribute_value_set) == 1:
+        return (
+            calculate_entropy(db, subset_db),
+            attribute_value_set.pop(),
+            subset_db,
+            [],
+        )
+    cursor_pos = 0
+    cursor_value = str(db[subset_db[0]][attribute])
+    subset_db_len = len(subset_db)
+    best_split_point = None
+    best_gain = None
+    best_left_split = None
+    best_right_split = None
+    for i in range(1, subset_db_len):
+        if str(db[subset_db[i]][attribute]) != cursor_value:
+            split_point = (float(cursor_value) + db[subset_db[i]][attribute]) / 2
+            info_d = ((cursor_pos + 1) / subset_db_len) * calculate_entropy(
+                db, subset_db[: cursor_pos + 1]
+            ) + ((subset_db_len - cursor_pos - 1) / subset_db_len) * calculate_entropy(
+                db, subset_db[cursor_pos + 1 :]
+            )
+            split_info = -((cursor_pos + 1) / subset_db_len) * log2(
+                (cursor_pos + 1) / subset_db_len
+            ) - ((subset_db_len - cursor_pos - 1) / subset_db_len) * log2(
+                (subset_db_len - cursor_pos - 1) / subset_db_len
+            )
+            gain = (entropy_db - info_d) / split_info
+            if not best_gain:
+                best_gain = gain
+                best_split_point = split_point
+                best_left_split = subset_db[: cursor_pos + 1]
+                best_right_split = subset_db[cursor_pos + 1 :]
+
+            if gain > best_gain:
+                best_gain = gain
+                best_split_point = split_point
+                best_left_split = subset_db[: cursor_pos + 1]
+                best_right_split = subset_db[cursor_pos + 1 :]
+            cursor_value = db[subset_db[i]][attribute]
+            cursor_pos = i
+
+    return best_gain, best_split_point, best_left_split, best_right_split
 
 
 def build_decision_tree(
@@ -159,6 +216,9 @@ def build_decision_tree(
     best_attribute = None
     best_gain_ratio = None
     best_split_info = None
+    best_split_point = None
+    best_left_split = None
+    best_right_split = None
     for i, attribute in enumerate(attribute_flag):
         if not attribute:
             if discrete_flag[i]:
@@ -176,7 +236,25 @@ def build_decision_tree(
                     best_attribute = i
                     best_split_info = split_db
             else:
-                pass
+                conditional_sort(db, subset_db, i)
+                gain, split_point, left_split, right_split = continuous_best_split(
+                    db, subset_db, attribute, entropy_db
+                )
+
+                if not best_gain_ratio:
+                    best_gain_ratio = gain
+                    best_attribute = i
+                    best_split_point = split_point
+                    best_left_split = deepcopy(left_split)
+                    best_right_split = deepcopy(right_split)
+
+                if gain > best_gain_ratio:
+                    best_gain_ratio = gain
+                    best_attribute = i
+                    best_split_point = split_point
+                    best_left_split = deepcopy(left_split)
+                    best_right_split = deepcopy(right_split)
+
     root.attribute = best_attribute
     new_attribute_flag[best_attribute] = True
     if discrete_flag[best_attribute]:
@@ -196,7 +274,30 @@ def build_decision_tree(
                     discrete_value_map,
                 )
     else:
-        pass
+        root.split_point = best_split_point
+        left_child = TreeNode()
+        root.children["less"] = left_child
+        build_decision_tree(
+            db,
+            left_child,
+            discrete_flag,
+            best_left_split,
+            new_attribute_flag,
+            discrete_value_map,
+        )
+        right_child = TreeNode()
+        root.children["greater"] = right_child
+        if len(best_right_split) > 0:
+            build_decision_tree(
+                db,
+                right_child,
+                discrete_flag,
+                best_right_split,
+                new_attribute_flag,
+                discrete_value_map,
+            )
+        else:
+            right_child.decision = majority_decision
 
 
 if __name__ == "__main__":
