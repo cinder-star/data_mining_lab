@@ -1,6 +1,7 @@
 import random
 import operator
 from math import sqrt, pi, exp
+from sklearn.metrics import classification_report
 
 
 def read_file(filename: str):
@@ -62,6 +63,7 @@ def db_summarize(db: list[list]):
         (calculate_mean(column), calculate_standard_devaition(column), len(column))
         for column in zip(*db)
     ]
+    del summary[-1]
     return summary
 
 
@@ -69,13 +71,17 @@ def class_summarize(db: list[list]):
     separate_by_class = class_separation(db)
     class_summary = {}
     for k, v in separate_by_class.items():
-        class_summary[k] = db_summarize([row[:-1] for row in v])
+        class_summary[k] = db_summarize(v)
     return class_summary
 
 
 def calculate_probability(x: float, avg: float, standard_dev: float):
-    exponent = exp(-((x - avg) ** 2 / (2 * standard_dev ** 2)))
-    return (1 / (sqrt(2 * pi) * standard_dev)) * exponent
+    try:
+        exponent = exp(-((x - avg) ** 2 / (2 * standard_dev ** 2)))
+        temp = (1 / (sqrt(2 * pi) * standard_dev)) * exponent
+    except ZeroDivisionError:
+        temp = 0
+    return temp
 
 
 def calculate_prediction_probabilities(summary: any, row: list):
@@ -90,15 +96,44 @@ def calculate_prediction_probabilities(summary: any, row: list):
     return probabilities
 
 
+def convert_to_number(string: str):
+    return int.from_bytes(string.encode(), "little")
+
+
 def argmax(map: dict):
     return max(map.items(), key=operator.itemgetter(1))[0]
 
 
+def prepare_data(data: list):
+    prepared_data = []
+    map = {}
+    count = 0
+    for row in data:
+        for i, elem in enumerate(row):
+            if isinstance(elem, str):
+                if elem in map:
+                    row[i] = map[elem]
+                else:
+                    map[elem] = count
+                    row[i] = count
+                    count += 1
+        prepared_data.append(row)
+    return prepared_data
+
+
 if __name__ == "__main__":
-    data = read_file("test.data")
+    file = "iris.data"
+    data = read_file(file)
     data = process_data(data)
+    data = prepare_data(data)
     train_db, test_db = validation_split(data, 0.7)
-    db_summary = db_summarize([row[:-1] for row in train_db])
+    db_summary = db_summarize(data)
     class_summary = class_summarize(train_db)
-    probabilities = calculate_prediction_probabilities(class_summary, test_db[0])
-    print(argmax(probabilities), test_db[0][-1])
+    real_label = [row[-1] for row in test_db]
+    prediction = []
+    classes = list(class_summary.keys())
+    for row in test_db:
+        probabilities = calculate_prediction_probabilities(class_summary, row)
+        prediction.append(argmax(probabilities))
+    f = open("bayesoutput.txt", "a+")
+    f.write(f"{file}\n{classification_report(real_label, prediction, labels=classes)}")

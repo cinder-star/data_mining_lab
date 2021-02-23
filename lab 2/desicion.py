@@ -2,6 +2,7 @@ import random
 import operator
 from copy import deepcopy
 from math import log2
+from sklearn.metrics import classification_report
 
 
 class TreeNode:
@@ -43,13 +44,13 @@ def classify_attributes(data: list):
     row_count = len(data)
     attribute_count = len(data[0][:-1])
     discrete_flag = [True for _ in range(attribute_count)]
-    for i in range(attribute_count):
-        value_set = set()
-        if not isinstance(data[0][i], str):
-            for j in range(row_count):
-                value_set.add(data[j][i])
-            if len(value_set) > 10:
-                discrete_flag[i] = False
+    # for i in range(attribute_count):
+    #     value_set = set()
+    #     if not isinstance(data[0][i], str):
+    #         for j in range(row_count):
+    #             value_set.add(data[j][i])
+    #         if len(value_set) > 10:
+    #             discrete_flag[i] = False
     return discrete_flag
 
 
@@ -301,7 +302,8 @@ def build_decision_tree(
 
 
 if __name__ == "__main__":
-    data = read_file("iris.data")
+    file = "car.data"
+    data = read_file(file)
     data = process_data(data)
     discrete_flag = classify_attributes(data)
     discrete_value_map = discrete_attribute_value_map(data, discrete_flag)
@@ -317,6 +319,12 @@ if __name__ == "__main__":
         discrete_value_map,
     )
     validation_result = []
+    real_result = []
     for row in test_db:
-        validation_result.append((calculate_result(row, root), row[-1]))
-    print(validation_result)
+        validation_result.append(calculate_result(row, root, discrete_flag))
+        real_result.append(row[-1])
+    classes = list(set([row[-1] for row in data]))
+    f = open("decisionoutput.txt", "a+")
+    f.write(
+        f"{file}\n{classification_report(real_result, validation_result, labels=classes)}"
+    )
