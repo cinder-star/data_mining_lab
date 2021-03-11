@@ -17,6 +17,9 @@ class Point:
     def __str__(self):
         return f"{self.attributes} {self.cluster} {self.distance}"
 
+    def __repr__(self):
+        return f"{self.attributes} {self.cluster} {self.distance}"
+
 
 def read_file(filename: str):
     file = open(filename, "r")
@@ -61,6 +64,21 @@ def prepare_data(data: list):
     return prepared_data
 
 
+def calculate_mean(centroids: list[Point], points: list[Point]):
+    k = len(centroids)
+    att_size = len(centroids[0].attributes)
+    avg_map = {i: {"sum": [0.0 for _ in range(att_size)], "total": 0} for i in range(k)}
+    for point in points:
+        for i, att in enumerate(point.attributes):
+            avg_map[point.cluster]["sum"][i] += att
+        avg_map[point.cluster]["total"] += 1
+    for k in avg_map:
+        for i, att in enumerate(avg_map[k]["sum"]):
+            avg_map[k]["sum"][i] = att / avg_map[k]["total"]
+    for k, v in avg_map.items():
+        centroids[k].attributes = v["sum"]
+
+
 def assign_cluster(centroids: list[Point], points: list[Point]):
     changed = 0
     old_clusters = [x.cluster for x in points]
@@ -77,8 +95,12 @@ def assign_cluster(centroids: list[Point], points: list[Point]):
     return changed
 
 
-def run_recursive_step():
-    pass
+def run_recursive_step(centroids: list[Point], points: list[Point]):
+    calculate_mean(centroids, points)
+    changed = assign_cluster(centroids, points)
+    while changed != 0:
+        calculate_mean(centroids, points)
+        changed = assign_cluster(centroids, points)
 
 
 def run_k_means(data: list, k: int):
@@ -91,6 +113,7 @@ def run_k_means(data: list, k: int):
         points.append(Point(point[:-1]))
 
     assign_cluster(centroids, points)
+    run_recursive_step(centroids, points)
 
 
 if __name__ == "__main__":
