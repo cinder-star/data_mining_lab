@@ -1,0 +1,21 @@
+iris.data k: 3
+silhouette score: 0.510644686899777
+
+lenses.data k: 2
+silhouette score: 0.520884092024588
+
+winequality-red.data k: 2
+silhouette score: 0.6075281800654608
+
+winequality-white.data k: 2
+silhouette score: 0.4964294437426804
+
+amphibians.data k: 4
+silhouette score: 0.27999336075929
+
+glass.data k: 2
+silhouette score: 0.5211358075701247
+
+mushroom.data k: 2
+silhouette score: 0.29050699879967073
+

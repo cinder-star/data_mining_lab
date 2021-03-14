@@ -137,10 +137,13 @@ def run_k_medoids(data: list, k: int):
 
 
 if __name__ == "__main__":
-    file = "iris.data"
+    file = "mushroom.data"
     data = read_file(file)
     data = process_data(data)
     data = prepare_data(data)
     random.shuffle(data)
-    points, clusters = run_k_medoids(data, 3)
-    print(silhouette_score(points, clusters))
+    k = 2
+    points, clusters = run_k_medoids(data, k)
+    f = open("medoids-report.txt", "a+")
+    f.write(f"{file} k: {k}\nsilhouette score: {silhouette_score(points, clusters)}\n\n")
+    f.close()
