@@ -2,6 +2,7 @@ import random
 from copy import deepcopy
 from sklearn.metrics import silhouette_score
 
+from bcubed import precision, recall
 
 class Point:
     def __init__(self, attributes: list, cluster: int = -1, distance: float = None):
@@ -125,15 +126,21 @@ def run_recursive_step(centroids: list[Point], points: list[Point]):
 def run_k_medoids(data: list, k: int):
     centroids = []
     points = []
+    ldict = {}
+    cdict = {}
     for centroid in data[:k]:
         centroids.append(Point(deepcopy(centroid[:-1])))
 
-    for point in data:
+    for i, point in enumerate(data):
         points.append(Point(point[:-1]))
+        ldict[f"item{i+1}"] = set([point[-1]])
 
     assign_cluster(centroids, points)
     run_recursive_step(centroids, points)
-    return [x.attributes for x in points], [x.cluster for x in points]
+    for i, point in enumerate(points):
+        cdict[f"item{i+1}"] = set([point.cluster])
+
+    return [x.attributes for x in points], [x.cluster for x in points], ldict, cdict
 
 
 if __name__ == "__main__":
@@ -143,7 +150,7 @@ if __name__ == "__main__":
     data = prepare_data(data)
     random.shuffle(data)
     k = 2
-    points, clusters = run_k_medoids(data, k)
+    points, clusters, ldict, cdict = run_k_medoids(data, k)
     f = open("medoids-report.txt", "a+")
     f.write(f"{file} k: {k}\nsilhouette score: {silhouette_score(points, clusters)}\n\n")
     f.close()

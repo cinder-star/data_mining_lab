@@ -1,0 +1,12 @@
+iris.data k: 3
+precision: 0.5908573540280857
+recall: 0.6698666666666666
+
+winequality-red.data k: 2
+precision: 0.37904922968215166
+recall: 0.7757738282616825
+
+winequality-white.data k: 2
+precision: 0.3350885059255205
+recall: 0.5328316247634576
+
