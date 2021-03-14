@@ -9,10 +9,10 @@ class Point:
         self.cluster = cluster
         self.distance = distance
 
-    def eucledian_distance(self, point: any):
+    def manhatten_distance(self, point: any):
         distance = 0.0
         for a, b in zip(self.attributes, point.attributes):
-            distance += (a - b) ** 2
+            distance += abs(a - b)
         return distance
 
     def __str__(self):
@@ -65,27 +65,12 @@ def prepare_data(data: list):
     return prepared_data
 
 
-def calculate_mean(centroids: list[Point], points: list[Point]):
-    k = len(centroids)
-    att_size = len(centroids[0].attributes)
-    avg_map = {i: {"sum": [0.0 for _ in range(att_size)], "total": 0} for i in range(k)}
-    for point in points:
-        for i, att in enumerate(point.attributes):
-            avg_map[point.cluster]["sum"][i] += att
-        avg_map[point.cluster]["total"] += 1
-    for k in avg_map:
-        for i, att in enumerate(avg_map[k]["sum"]):
-            avg_map[k]["sum"][i] = att / avg_map[k]["total"]
-    for k, v in avg_map.items():
-        centroids[k].attributes = v["sum"]
-
-
 def assign_cluster(centroids: list[Point], points: list[Point]):
     changed = 0
     old_clusters = [x.cluster for x in points]
     for point in points:
         for i, centroid in enumerate(centroids):
-            temp_distance = point.eucledian_distance(centroid)
+            temp_distance = point.manhatten_distance(centroid)
             if point.cluster == -1 or point.distance > temp_distance:
                 point.cluster = i
                 point.distance = temp_distance
@@ -95,16 +80,49 @@ def assign_cluster(centroids: list[Point], points: list[Point]):
             changed += 1
     return changed
 
+def calculate_average_error(centroids: list[Point], points: list[Point]):
+    error = 0.0
+    for point in points:
+        final_dis = False
+        for i, centroid in enumerate(centroids):
+            temp_dis = point.manhatten_distance(centroid)
+            if not final_dis:
+                final_dis = temp_dis
+            if temp_dis < final_dis:
+                final_dis = temp_dis
+        error += final_dis
+    return error
+            
+
+def get_clustered_data(points: list[Point]):
+    clustered_data = {}
+    for i, point in enumerate(points):
+        try:
+            clustered_data[point.cluster].append(i)
+        except KeyError:
+            clustered_data[point.cluster] = [i]
+    return clustered_data
+
+def change_medoid(centroids: list[Point], points: list[Point]):
+    prev_error = calculate_average_error(centroids, points)
+    clustered_data = get_clustered_data(points)
+    for i, centroid in enumerate(centroids):
+        new_centroids = deepcopy(centroids)
+        for j in clustered_data[i]:
+            new_centroids[i] = points[j]
+            new_error = calculate_average_error(new_centroids, points)
+            if new_error < prev_error:
+                return assign_cluster(new_centroids, points), new_centroids
+    return 0, centroids
+
 
 def run_recursive_step(centroids: list[Point], points: list[Point]):
-    calculate_mean(centroids, points)
-    changed = assign_cluster(centroids, points)
+    changed = -1
     while changed != 0:
-        calculate_mean(centroids, points)
-        changed = assign_cluster(centroids, points)
+        changed, centroids = change_medoid(centroids, points)
 
 
-def run_k_means(data: list, k: int):
+def run_k_medoids(data: list, k: int):
     centroids = []
     points = []
     for centroid in data[:k]:
@@ -115,18 +133,14 @@ def run_k_means(data: list, k: int):
 
     assign_cluster(centroids, points)
     run_recursive_step(centroids, points)
-
     return [x.attributes for x in points], [x.cluster for x in points]
 
 
 if __name__ == "__main__":
-    file = "mushroom.data"
+    file = "iris.data"
     data = read_file(file)
     data = process_data(data)
     data = prepare_data(data)
     random.shuffle(data)
-    k = 3
-    points, clusters = run_k_means(data, k)
-    f = open("means-report.txt", "a+")
-    f.write(f"{file} k: {k}\nsilhouette score: {silhouette_score(points, clusters)}\n\n")
-    f.close()
+    points, clusters = run_k_medoids(data, 3)
+    print(silhouette_score(points, clusters))
